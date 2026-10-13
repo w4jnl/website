@@ -1,0 +1,54 @@
+{{/*
+  Blowfish's render-image hook with one addition: data-zoom-src on the
+  resized image. Its srcset tops out at 1320px, which browsers show at
+  660 CSS px, and medium-zoom never scales past an image's natural width,
+  so a click could not enlarge a large screenshot and sometimes shrank it.
+  With data-zoom-src, medium-zoom loads the original when the image is
+  clicked and zooms to fit the window.
+*/}}
+{{ $disableImageOptimization := .Page.Site.Params.disableImageOptimization | default false }}
+{{ $url := urls.Parse .Destination }}
+{{ $altText := .Text }}
+{{ $caption := .Title }}
+{{ if findRE "^https?" $url.Scheme }}
+  <figure>
+    <img class="my-0 rounded-md" src="{{ $url.String }}" alt="{{ $altText }}" />
+    {{ with $caption }}<figcaption>{{ . | markdownify }}</figcaption>{{ end }}
+  </figure>
+{{ else }}
+  {{ $resource := "" }}
+  {{ if $.Page.Resources.GetMatch ($url.String) }}
+    {{ $resource = $.Page.Resources.GetMatch ($url.String) }}
+  {{ else if resources.GetMatch ($url.String) }}
+    {{ $resource = resources.Get ($url.String) }}
+  {{ end }}
+  {{ with $resource }}
+    <figure>
+      {{ if $disableImageOptimization }}
+      <img
+        class="my-0 rounded-md"
+        src="{{ .RelPermalink }}"
+        alt="{{ $altText }}"
+      />
+      {{ else }}
+      <img
+        class="my-0 rounded-md"
+        srcset="
+        {{ (.Resize "330x").RelPermalink }} 330w,
+        {{ (.Resize "660x").RelPermalink }} 660w,
+        {{ (.Resize "1024x").RelPermalink }} 1024w,
+        {{ (.Resize "1320x").RelPermalink }} 2x"
+        src="{{ (.Resize "660x").RelPermalink }}"
+        data-zoom-src="{{ .RelPermalink }}"
+        alt="{{ $altText }}"
+      />
+      {{ end }}
+      {{ with $caption }}<figcaption>{{ . | markdownify }}</figcaption>{{ end }}
+    </figure>
+  {{ else }}
+    <figure>
+      <img class="my-0 rounded-md" src="{{ $url.String }}" alt="{{ $altText }}" />
+      {{ with $caption }}<figcaption>{{ . | markdownify }}</figcaption>{{ end }}
+    </figure>
+  {{ end }}
+{{ end }}
